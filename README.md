@@ -22,15 +22,37 @@
 
 ## 架構
 
-```text
-網頁攝影機 ──> /ws ──> YOLOv8n-pose ──> 姿態/計次/評分 ──> 網頁回饋
-                              ↑                  ↑
-                         BLE 心率帶 ──> 心率決策 <── rPPG 備援
+### S1｜現行網頁路徑
 
-參考客戶端 ──> 本機姿態估計 ──> /ws_skeleton ──> 骨架評分結果
+```mermaid
+flowchart LR
+    camera["瀏覽器攝影機"] -->|影像 · /ws| api["FastAPI"]
+    api --> pose["YOLOv8n-pose<br/>姿態估計"]
+    api --> rppg["rPPG<br/>影像心率"]
+    ble["BLE 心率帶"] --> hr{"心率來源選擇<br/>訊號品質把關"}
+    rppg --> hr
+    pose --> routing["第二層<br/>資料分流與融合決策"]
+    hr --> routing
+    routing --> coach["第三層<br/>動作評量與建議生成"]
+    coach --> ui["網頁即時回饋"]
 ```
 
-`/ws` 是現有網頁使用的影像傳輸路徑；`/ws_skeleton` 是研究用的另一條路徑。兩者的效能數據應分開解讀。
+### S2｜骨架卸載實驗路徑
+
+```mermaid
+flowchart LR
+    camera["攝影機"] --> pose["參考客戶端<br/>姿態估計"]
+    camera --> rppg["端側 rPPG"]
+    ble["BLE 心率帶"] --> hr["端側心率選擇"]
+    rppg --> hr
+    pose --> packet["17 個關節點<br/>選填心率"]
+    hr --> packet
+    packet -->|/ws_skeleton| api["FastAPI"]
+    api --> score["骨架評分與計次"]
+    score --> result["參考客戶端回饋"]
+```
+
+S1 透過 `/ws` 傳送影像；S2 在參考客戶端處理影像，透過 `/ws_skeleton` 傳送骨架與選填心率。兩條路徑的效能數據應分開解讀。
 
 ## 專案目錄
 
