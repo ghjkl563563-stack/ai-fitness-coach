@@ -25,7 +25,7 @@
 ### S1｜現行網頁路徑
 
 ```mermaid
-flowchart LR
+flowchart TB
     camera["瀏覽器攝影機"] -->|影像 · /ws| api["FastAPI"]
     api --> pose["YOLOv8n-pose<br/>姿態估計"]
     api --> rppg["rPPG<br/>影像心率"]
@@ -40,7 +40,7 @@ flowchart LR
 ### S2｜骨架卸載實驗路徑
 
 ```mermaid
-flowchart LR
+flowchart TB
     camera["攝影機"] --> pose["參考客戶端<br/>姿態估計"]
     camera --> rppg["端側 rPPG"]
     ble["BLE 心率帶"] --> hr["端側心率選擇"]
