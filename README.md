@@ -51,18 +51,22 @@ flowchart TB
 
 ### 第三、四層｜動作評估與生成式互動
 
+提案中的重訓模式以硬體級中斷與疲勞防護為重點：偵測高心率異常時強制介入，引導離心放鬆。
+
 ```mermaid
 flowchart TB
-    strength --> rep
+    strength --> detect
     home --> stgcn
-    strength["重訓模式"]
+    strength["重訓模組<br/>StrengthTrainingAgent"]
     home["居家模式"]
-    heart["選定心率<br/>來自第一層"] --> rep
+    heart["選定心率<br/>來自第一層"] -.->|提案：高心率異常時介入| state
     heart --> fusion
-    rep["關節角度與狀態機計次<br/>assess_rep 動作品質評估"]
+    detect["智慧動作偵測<br/>Y 座標高低比對<br/>深蹲／肩推／划船"] --> angle["關節夾角計算<br/>get_angle"]
+    angle --> rep["多重運動品質評估<br/>assess_rep"]
+    rep --> state["狀態機計數與防護<br/>UP / DOWN"]
     stgcn["50 幀姿態 → ST-GCN 特徵"] --> exemplar["Exemplar 範本比對<br/>UnitDiff"]
     exemplar --> fusion["PoseCrossAttModel<br/>姿態與心率融合"]
-    rep --> gemini
+    state --> gemini
     fusion --> gemini
     gemini["Gemini 2.5 Flash<br/>教練講評"] --> ui["動態介面與語音回饋"]
 
@@ -72,9 +76,11 @@ flowchart TB
     classDef result fill:#DCFCE7,stroke:#16A34A,color:#0F172A
     class strength,home input
     class heart sensing
-    class rep,stgcn,exemplar,fusion decision
+    class detect,angle,rep,state,stgcn,exemplar,fusion decision
     class gemini,ui result
 ```
+
+圖中的強制介入與離心放鬆屬於提案設計；此公開版本目前提供高心率安全提醒，尚未實作硬體中斷控制。
 
 `/ws` 是網頁運行路徑；`/ws_skeleton` 的骨架卸載屬於另外的端雲協同實驗，詳見 [實驗說明](experiments/README.md)。
 
