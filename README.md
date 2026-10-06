@@ -35,6 +35,15 @@ flowchart TB
     hr --> routing
     routing --> coach["第三層<br/>動作評量與建議生成"]
     coach --> ui["網頁即時回饋"]
+
+    classDef input fill:#E0F2FE,stroke:#0284C7,color:#0F172A
+    classDef sensing fill:#FEF3C7,stroke:#D97706,color:#0F172A
+    classDef core fill:#EDE9FE,stroke:#7C3AED,color:#0F172A
+    classDef output fill:#DCFCE7,stroke:#16A34A,color:#0F172A
+    class camera,ble input
+    class rppg,hr sensing
+    class api,pose,routing,coach core
+    class ui output
 ```
 
 ### S2｜骨架卸載實驗路徑
@@ -50,6 +59,15 @@ flowchart TB
     packet -->|/ws_skeleton| api["FastAPI"]
     api --> score["骨架評分與計次"]
     score --> result["參考客戶端回饋"]
+
+    classDef input fill:#E0F2FE,stroke:#0284C7,color:#0F172A
+    classDef sensing fill:#FEF3C7,stroke:#D97706,color:#0F172A
+    classDef core fill:#EDE9FE,stroke:#7C3AED,color:#0F172A
+    classDef output fill:#DCFCE7,stroke:#16A34A,color:#0F172A
+    class camera,ble input
+    class rppg,hr sensing
+    class pose,packet,api,score core
+    class result output
 ```
 
 S1 透過 `/ws` 傳送影像；S2 在參考客戶端處理影像，透過 `/ws_skeleton` 傳送骨架與選填心率。兩條路徑的效能數據應分開解讀。
