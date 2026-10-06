@@ -22,55 +22,52 @@
 
 ## 架構
 
-### S1｜現行網頁路徑
+依照 AegisFit 提案簡報的四層設計，系統先取得姿態與雙軌心率，再決定訓練模式；重訓與居家模式各自評量動作，最後產生教練回饋。
 
 ```mermaid
 flowchart TB
-    camera["瀏覽器攝影機"] -->|影像 · /ws| api["FastAPI"]
-    api --> pose["YOLOv8n-pose<br/>姿態估計"]
-    api --> rppg["rPPG<br/>影像心率"]
-    ble["BLE 心率帶"] --> hr{"心率來源選擇<br/>訊號品質把關"}
-    rppg --> hr
-    pose --> routing["第二層<br/>資料分流與融合決策"]
-    hr --> routing
-    routing --> coach["第三層<br/>動作評量與建議生成"]
-    coach --> ui["網頁即時回饋"]
+    subgraph L1["第一層｜多模態感知"]
+        camera["攝影機影像流"] --> pose["YOLOv8 姿態骨架"]
+        camera --> rppg["rPPG 視覺心率<br/>斷線備援"]
+        ble["BLE 心率帶"] --> physical["hr_service.py 實體心率<br/>優先採用"]
+        physical --> heart["雙軌心率"]
+        rppg --> heart
+    end
+
+    subgraph L2["第二層｜資料分發與融合決策"]
+        dual["影像與心率雙軌決策"] --> mode{"Mode Selector<br/>系統分流"}
+        mode --> strength["重訓模式"]
+        mode --> home["居家模式"]
+    end
+    pose --> dual
+    heart --> dual
+
+    subgraph L3["第三層｜AI 核心評估與指引生成"]
+        rep["關節角度與狀態機計次<br/>assess_rep 動作品質評估"]
+        stgcn["50 幀姿態 → ST-GCN 特徵"] --> exemplar["Exemplar 範本比對<br/>UnitDiff"]
+        exemplar --> fusion["PoseCrossAttModel<br/>姿態與心率融合"]
+    end
+    strength --> rep
+    home --> stgcn
+    heart --> fusion
+
+    subgraph L4["第四層｜生成式互動"]
+        gemini["Gemini 2.5 Flash<br/>教練講評"] --> ui["動態介面與語音回饋"]
+    end
+    rep --> gemini
+    fusion --> gemini
 
     classDef input fill:#E0F2FE,stroke:#0284C7,color:#0F172A
     classDef sensing fill:#FEF3C7,stroke:#D97706,color:#0F172A
-    classDef core fill:#EDE9FE,stroke:#7C3AED,color:#0F172A
-    classDef output fill:#DCFCE7,stroke:#16A34A,color:#0F172A
+    classDef decision fill:#EDE9FE,stroke:#7C3AED,color:#0F172A
+    classDef result fill:#DCFCE7,stroke:#16A34A,color:#0F172A
     class camera,ble input
-    class rppg,hr sensing
-    class api,pose,routing,coach core
-    class ui output
+    class rppg,physical,heart sensing
+    class pose,dual,mode,strength,home,rep,stgcn,exemplar,fusion decision
+    class gemini,ui result
 ```
 
-### S2｜骨架卸載實驗路徑
-
-```mermaid
-flowchart TB
-    camera["攝影機"] --> pose["參考客戶端<br/>姿態估計"]
-    camera --> rppg["端側 rPPG"]
-    ble["BLE 心率帶"] --> hr["端側心率選擇"]
-    rppg --> hr
-    pose --> packet["17 個關節點<br/>選填心率"]
-    hr --> packet
-    packet -->|/ws_skeleton| api["FastAPI"]
-    api --> score["骨架評分與計次"]
-    score --> result["參考客戶端回饋"]
-
-    classDef input fill:#E0F2FE,stroke:#0284C7,color:#0F172A
-    classDef sensing fill:#FEF3C7,stroke:#D97706,color:#0F172A
-    classDef core fill:#EDE9FE,stroke:#7C3AED,color:#0F172A
-    classDef output fill:#DCFCE7,stroke:#16A34A,color:#0F172A
-    class camera,ble input
-    class rppg,hr sensing
-    class pose,packet,api,score core
-    class result output
-```
-
-S1 透過 `/ws` 傳送影像；S2 在參考客戶端處理影像，透過 `/ws_skeleton` 傳送骨架與選填心率。兩條路徑的效能數據應分開解讀。
+`/ws` 是網頁運行路徑；`/ws_skeleton` 的骨架卸載屬於另外的端雲協同實驗，詳見 [實驗說明](experiments/README.md)。
 
 ## 專案目錄
 
