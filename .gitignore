@@ -1,0 +1,31 @@
+# Credentials and local configuration
+.env
+.env.*
+!.env.example
+*.key
+credentials.*
+secrets.*
+
+# Python and editor output
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.vscode/
+.idea/
+*.log
+
+# Model assets are kept locally and documented in README.md
+*.pt
+*.pth
+
+# Experiment output can contain identifiable physiological data
+experiments/results/
+
+# Local tools and operating-system files
+ngrok.exe
+Thumbs.db
+desktop.ini
+.DS_Store

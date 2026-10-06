@@ -1,0 +1,87 @@
+# 多模態 AI 健身教練 | Multimodal AI Fitness Coach
+
+結合人體姿態估計、動作計次與雙軌心率感測的居家健身專題。系統提供重訓與居家運動模式，透過網頁即時顯示姿態、次數及回饋；另有只傳送骨架座標的端雲協同實驗路徑。
+
+> 這是推甄展示用的程式與實驗流程。模型權重、受試者原始資料及舊版開發檔案未公開；完整執行需要自行備妥下列權重與硬體。
+
+## 系統重點
+
+- **姿態與動作評估**：YOLOv8n-pose 擷取關節點，ST-GCN 與範本特徵用於動作品質分析；骨架訊號與遲滯狀態機負責計次，靜態動作改以持續時間呈現。
+- **雙軌心率**：優先使用 BLE 心率帶，rPPG 影像心率作為備援，並以訊號品質決定是否顯示估計值。
+- **自動模式選擇**：結合姿態及可用的心率資訊，切換重訓或居家模式。
+- **即時互動**：FastAPI + WebSocket 傳送影像與回饋；設定 `GEMINI_API_KEY` 後可啟用生成式講評。
+- **端雲協同研究**：`/ws_skeleton` 接收 17 個關節點與選填心率，供骨架卸載流程評分；`experiments/client_s2.py` 是參考客戶端。
+
+## 架構
+
+```text
+網頁攝影機 ──> /ws ──> YOLOv8n-pose ──> 姿態/計次/評分 ──> 網頁回饋
+                              ↑                  ↑
+                         BLE 心率帶 ──> 心率決策 <── rPPG 備援
+
+參考客戶端 ──> 本機姿態估計 ──> /ws_skeleton ──> 骨架評分結果
+```
+
+`/ws` 是現有網頁使用的影像傳輸路徑；`/ws_skeleton` 是研究用的另一條路徑。兩者的效能數據應分開解讀。
+
+## 專案目錄
+
+| 路徑 | 用途 |
+| --- | --- |
+| `app.py`, `index.html` | 網頁與 WebSocket 服務 |
+| `AI_Agent_*.py`, `Mode_Selector.py` | 模式選擇、姿態評分與互動 |
+| `hr_service.py`, `rPPG_service.py`, `rppg_algorithms.py` | BLE 與影像心率 |
+| `rep_counter.py` | 骨架動作計次 |
+| `models/` | 模型結構與特徵處理程式 |
+| `experiments/` | 合成驗證、資料收集與傳輸實驗；詳見 [實驗說明](experiments/README.md) |
+
+## 執行方式
+
+已驗證的開發環境為 **Python 3.11 / Windows 11**。從儲存庫根目錄執行：
+
+```powershell
+py -3.11 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+```
+
+請把自行取得或訓練的模型檔案放在程式預期的位置：
+
+| 路徑 | 用途 |
+| --- | --- |
+| `yolov8n-pose.pt` | 姿態估計 |
+| `best_model 1.pth` | 融合模型 |
+| `models/gcn_weight.pth` | ST-GCN 特徵提取 |
+| `models/resnet_weight.pth` | EMG 特徵提取 |
+| `exemplar_bank.pt` | 動作參考範本 |
+
+程式會在缺少必要權重時無法啟動對應模式。本儲存庫沒有提供模型下載連結，因為相關權重的來源與再散布條件尚需逐一確認。
+
+使用 BLE 心率帶時，可在 PowerShell 設定裝置位址；留空則由程式掃描心率裝置。生成式講評是選用功能，未設定金鑰時其餘功能仍可使用。
+
+```powershell
+$env:BLE_HR_ADDRESS = "你的心率帶位址"
+$env:GEMINI_API_KEY = "你的金鑰"
+python -m uvicorn app:app --host 127.0.0.1 --port 8000
+```
+
+接著開啟 <http://127.0.0.1:8000>，並允許瀏覽器使用攝影機。環境變數範例見 [`.env.example`](.env.example)；程式不會自動載入 `.env` 檔。
+
+## 驗證與實驗
+
+以下命令可在沒有真人資料的情況下驗證演算法與計次邏輯：
+
+```powershell
+python experiments/test_rppg_synth.py
+python experiments/test_rep_counter.py
+python experiments/test_rppg_service.py
+```
+
+傳輸實驗的既有紀錄採用 **640×480 合成畫面**。在該條件下，S1 全影像方案約 **31,669 B/影格**，S2 JSON 骨架方案約 **422 B/影格**，約減少 **75 倍**。另一本機 WebSocket 回聲測試只量傳輸、不含模型運算，量得上行 payload 約 **11,652 B** 與 **298 B**。這些數字是測試條件下的結果，不能視為真人運動、手機端推論或廣域網路的實測效能。重現方式與限制見 [實驗說明](experiments/README.md)。
+
+## 公開範圍與限制
+
+- 本儲存庫不包含模型權重、真實受試者生理資料與原始影像。`experiments/results/` 已排除在 Git 之外。
+- rPPG 受光線、臉部可見度與動作干擾影響；品質不足時應顯示無可信讀數。
+- `experiments/` 內包含研究腳本與合成驗證，不能把合成數據解讀成臨床或真人運動評估。
+- 本專題為學術展示，尚未經醫療用途驗證。

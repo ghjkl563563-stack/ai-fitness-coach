@@ -1,0 +1,38 @@
+# AI 健身教練系統 — 相依套件
+#
+# 版本為本專案實際驗證過的組合 (Python 3.11, Windows 11)。
+# 安裝：
+#     pip install -r requirements.txt
+#
+# 注意：torch 預設會裝 CPU 版。若要用 GPU，請先到 pytorch.org 依自己的
+# CUDA 版本取得安裝指令，再安裝其餘套件。
+
+# --- 數值與訊號處理 ---
+numpy==2.2.6
+scipy==1.16.3              # Butterworth 帶通濾波、Wilcoxon 檢定
+pandas==2.3.3
+matplotlib==3.10.7
+tabulate==0.9.0            # pandas.to_markdown() 需要
+
+# --- 影像與姿態 ---
+opencv-python==4.12.0.88
+pillow==12.0.0             # UI 中文字繪製
+ultralytics==8.3.228       # YOLOv8n-pose
+mediapipe==0.10.14         # rPPG 臉部 ROI 定位
+
+# --- 深度學習 ---
+torch==2.9.1
+torchvision==0.24.1
+torchaudio==2.9.1          # EMG encoder 的 MelSpectrogram
+
+# --- 感測與通訊 ---
+bleak==2.1.1               # BLE 心率帶
+websockets==16.0           # 傳輸量測與 S2 客戶端
+fastapi==0.115.0           # 網頁伺服器
+uvicorn[standard]==0.32.0  # ASGI 伺服器
+
+# --- AI 教練講評 ---
+google-genai==1.69.0       # 需設定 GEMINI_API_KEY 環境變數
+
+# --- 量測工具 ---
+psutil==5.9.5              # 壓力測試時監看伺服器 CPU
