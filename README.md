@@ -24,46 +24,55 @@
 
 依照 AegisFit 提案簡報的四層設計，系統先取得姿態與雙軌心率，再決定訓練模式；重訓與居家模式各自評量動作，最後產生教練回饋。
 
+### 第一、二層｜多模態感知與模式分流
+
 ```mermaid
 flowchart TB
-    subgraph L1["第一層｜多模態感知"]
-        camera["攝影機影像流"] --> pose["YOLOv8 姿態骨架"]
-        camera --> rppg["rPPG 視覺心率<br/>斷線備援"]
-        ble["BLE 心率帶"] --> physical["hr_service.py 實體心率<br/>優先採用"]
-        physical --> heart["雙軌心率"]
-        rppg --> heart
-    end
-
-    subgraph L2["第二層｜資料分發與融合決策"]
-        dual["影像與心率雙軌決策"] --> mode{"Mode Selector<br/>系統分流"}
-        mode --> strength["重訓模式"]
-        mode --> home["居家模式"]
-    end
+    camera["攝影機影像流"] --> pose["YOLOv8 姿態骨架"]
+    camera --> rppg["rPPG 視覺心率<br/>斷線備援"]
+    ble["BLE 心率帶"] --> physical["hr_service.py 實體心率<br/>優先採用"]
+    physical --> heart["雙軌心率"]
+    rppg --> heart
     pose --> dual
     heart --> dual
+    dual["影像與心率雙軌決策"] --> mode{"Mode Selector<br/>系統分流"}
+    mode --> strength["重訓模式"]
+    mode --> home["居家模式"]
 
-    subgraph L3["第三層｜AI 核心評估與指引生成"]
-        rep["關節角度與狀態機計次<br/>assess_rep 動作品質評估"]
-        stgcn["50 幀姿態 → ST-GCN 特徵"] --> exemplar["Exemplar 範本比對<br/>UnitDiff"]
-        exemplar --> fusion["PoseCrossAttModel<br/>姿態與心率融合"]
-    end
+    classDef input fill:#E0F2FE,stroke:#0284C7,color:#0F172A
+    classDef sensing fill:#FEF3C7,stroke:#D97706,color:#0F172A
+    classDef decision fill:#EDE9FE,stroke:#7C3AED,color:#0F172A
+    classDef output fill:#DCFCE7,stroke:#16A34A,color:#0F172A
+    class camera,ble input
+    class rppg,physical,heart sensing
+    class pose,dual,mode decision
+    class strength,home output
+```
+
+### 第三、四層｜動作評估與生成式互動
+
+```mermaid
+flowchart TB
     strength --> rep
     home --> stgcn
+    strength["重訓模式"]
+    home["居家模式"]
+    heart["選定心率<br/>來自第一層"] --> rep
     heart --> fusion
-
-    subgraph L4["第四層｜生成式互動"]
-        gemini["Gemini 2.5 Flash<br/>教練講評"] --> ui["動態介面與語音回饋"]
-    end
+    rep["關節角度與狀態機計次<br/>assess_rep 動作品質評估"]
+    stgcn["50 幀姿態 → ST-GCN 特徵"] --> exemplar["Exemplar 範本比對<br/>UnitDiff"]
+    exemplar --> fusion["PoseCrossAttModel<br/>姿態與心率融合"]
     rep --> gemini
     fusion --> gemini
+    gemini["Gemini 2.5 Flash<br/>教練講評"] --> ui["動態介面與語音回饋"]
 
     classDef input fill:#E0F2FE,stroke:#0284C7,color:#0F172A
     classDef sensing fill:#FEF3C7,stroke:#D97706,color:#0F172A
     classDef decision fill:#EDE9FE,stroke:#7C3AED,color:#0F172A
     classDef result fill:#DCFCE7,stroke:#16A34A,color:#0F172A
-    class camera,ble input
-    class rppg,physical,heart sensing
-    class pose,dual,mode,strength,home,rep,stgcn,exemplar,fusion decision
+    class strength,home input
+    class heart sensing
+    class rep,stgcn,exemplar,fusion decision
     class gemini,ui result
 ```
 
